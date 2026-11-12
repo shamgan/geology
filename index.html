@@ -44,7 +44,7 @@
   .track{flex:1;position:relative;padding-top:4px}
   input[type=range]{width:100%;accent-color:var(--accent)}
   .marks{position:relative;height:18px;font-size:11px;color:#7b8790}
-  .marks span{position:absolute;transform:translateX(50%);white-space:nowrap}
+  .marks span{position:absolute;transform:translateX(50%);white-space:nowrap;width:18px;height:18px;border-radius:50%;background:#e3eff0;color:var(--accent);font-weight:700;text-align:center;line-height:18px}
   select{font:inherit;border:1px solid var(--line);border-radius:8px;padding:5px}
   .steps{display:grid;grid-template-columns:repeat(var(--n,3),1fr);border-top:1px solid var(--line)}
   .steps button{border:0;background:#fff;padding:11px;font:inherit;font-size:14px;color:var(--muted);cursor:pointer;border-top:3px solid transparent}
@@ -158,13 +158,20 @@ function makeMantle(){const w=600,h=200,c=document.createElement('canvas');c.wid
   const hsh=(x,y)=>P[((x*73856093)^(y*19349663))&4095];
   const vn=(x,y)=>{const xi=Math.floor(x),yi=Math.floor(y),xf=x-xi,yf=y-yi,u=xf*xf*(3-2*xf),v=yf*yf*(3-2*yf);
     return lerp(lerp(hsh(xi,yi),hsh(xi+1,yi),u),lerp(hsh(xi,yi+1),hsh(xi+1,yi+1),u),v)};
-  const stops=[[0,[52,14,6]],[.35,[110,34,12]],[.6,[160,60,22]],[.82,[196,92,34]],[1,[226,132,58]]];
+  const stops=[[0,[50,14,6]],[.35,[104,32,12]],[.6,[146,54,20]],[.82,[172,74,28]],[1,[192,92,38]]];
   const col=v=>{for(let i=1;i<stops.length;i++)if(v<=stops[i][0]){const a=stops[i-1],b=stops[i],u=(v-a[0])/(b[0]-a[0]);return a[1].map((q,k)=>lerp(q,b[1][k],u))}return stops[4][1]};
   for(let y=0;y<h;y++)for(let x=0;x<w;x++){let v=0,a=.5,f=.011;for(let o=0;o<5;o++){v+=a*Math.abs(vn(x*f,y*f*1.4)*2-1);a*=.5;f*=2.1}
-    v=clamp(1.05-v*1.1);v=Math.pow(v,1.25);const dd=y/h;v*=lerp(1,.75,dd);const c3=col(clamp(v));const i=(y*w+x)*4;im.data[i]=c3[0];im.data[i+1]=c3[1];im.data[i+2]=c3[2];im.data[i+3]=255}
+    v=clamp(1.02-v*1.1);v=Math.pow(v,1.45);const dd=y/h;v*=lerp(1,.75,dd);const c3=col(clamp(v));const i=(y*w+x)*4;im.data[i]=c3[0];im.data[i+1]=c3[1];im.data[i+2]=c3[2];im.data[i+3]=255}
   g.putImageData(im,0,0);return c}
 const MANTLE=makeMantle();
 
+function convCells(list,lab){
+  ctx.save();ctx.lineWidth=2;ctx.setLineDash([16,18]);
+  list.forEach(([cx,cy,rx,ry,dir])=>{ctx.strokeStyle='rgba(255,226,190,.32)';ctx.lineDashOffset=-dir*T*900;ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,7);ctx.stroke();
+    ctx.setLineDash([]);for(let k=0;k<4;k++){const th=k*Math.PI/2+dir*T*6+.6;const x=cx+rx*Math.cos(th),y=cy+ry*Math.sin(th);const tx=-rx*Math.sin(th)*dir,ty=ry*Math.cos(th)*dir;const L=Math.hypot(tx,ty)||1;const ux=tx/L,uy=ty/L;
+      ctx.fillStyle='rgba(255,226,190,.5)';ctx.beginPath();ctx.moveTo(x+ux*9,y+uy*9);ctx.lineTo(x-ux*5-uy*6,y-uy*5+ux*6);ctx.lineTo(x-ux*5+uy*6,y-uy*5-ux*6);ctx.closePath();ctx.fill()}ctx.setLineDash([16,18])});
+  ctx.restore();if(labels&&lab)pill('זרמי ערבול',...lab);
+}
 function rim(pts,col='rgba(255,214,150,.85)',w=2,blur=10){ctx.save();ctx.strokeStyle=col;ctx.lineWidth=w;ctx.shadowColor=col;ctx.shadowBlur=blur;ctx.beginPath();pts.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.stroke();ctx.restore()}
 function polyPath(pts){ctx.beginPath();ctx.moveTo(pts[0][0],pts[0][1]);for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i][0],pts[i][1]);ctx.closePath()}
 function fillPoly(pts,fill,grain=.5){polyPath(pts);ctx.fillStyle=fill;ctx.fill();if(grain){ctx.save();ctx.clip();ctx.globalAlpha=grain;ctx.globalCompositeOperation='overlay';ctx.fillStyle=GRAIN;ctx.fillRect(0,0,W,H);ctx.restore()}}
@@ -312,6 +319,7 @@ function drawMagma(t,clock){
   const up2=sm((t-.66)/.14);const vent=vProfile(XV,v)+4;
   const path=[[srcX,srcY]];for(let y=srcY;y>=topY;y-=6){const u=(srcY-y)/(srcY-v.chamberY);path.push([lerp(srcX,XV,u)+1.6*Math.sin(y*.05),y])}
   if(up2>0){for(let y=v.chamberY;y>=lerp(v.chamberY,vent,up2);y-=4)path.push([XV+.6*Math.sin(y*.2),y])}
+  if(GLOWONLY){const vb=v.base-2;for(let i=path.length-1;i>=0;i--)if(path[i][1]<vb)path.splice(i,1)}
   const glow=.85+.15*Math.sin(clock*3);
   ctx.save();ctx.lineCap='round';ctx.lineJoin='round';ctx.shadowColor='rgba(255,120,20,.9)';ctx.shadowBlur=18;
   ctx.strokeStyle=`rgba(255,110,30,${.35*glow})`;ctx.lineWidth=16;ctx.beginPath();path.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.stroke();
@@ -427,7 +435,7 @@ let BASE=[1,1];
 function drawConv(clock){
   sky(clock);
   if(mode==='cc'){
-    waterBody();asthenosphere(clock);drawCC(T,clock);
+    waterBody();asthenosphere(clock);convCells([[300,520,230,90,1],[900,520,230,90,-1]],[300,632]);drawCC(T,clock);
     seaSurface(x=>ccTop(x,T),clock);
     drawQuakes(T,q=>{if(T<.25)return[null];const x=XC-60+q.u*120;return[x,lerp(ccTop(x,T)+30,ccCB(x,T)-10,q.d)]});
     arrow(300,ccCB(300,T)+40,1);arrow(900,ccCB(900,T)+40,-1);
@@ -435,7 +443,7 @@ function drawConv(clock){
       if(ccH(T)>60){const yt=Math.min(...[560,580,600,620,640].map(x=>ccTop(x,T)));pill('רכס הרים',780,Math.max(40,yt-10),640,yt+18)}
       if(T>.55)pill('הקרום מתעבה',820,470,XC+10,ccCB(XC,T)-20)}
   }else{
-    buildSlab(T);waterBody();asthenosphere(clock);
+    buildSlab(T);waterBody();asthenosphere(clock);convCells([[230,480,200,95,1],[1000,500,190,95,-1]],[230,605]);
     // distant land haze (continental case)
     if(mode==='oc')hazeRidge(640,W,x=>topO(x),26,'rgba(150,170,185,.35)');
     drawSlab(T);drawOverriding(T);
@@ -465,9 +473,9 @@ function render(clock){
   S.draw(clock);
   // bloom pass
   ctx=gctx;GLOWONLY=true;ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,W,H);applyCam(ctx,[1,1]);const g=S.glow?S.glow(clock):false;GLOWONLY=false;ctx=mainCtx;
-  if(g){ctx.save();ctx.setTransform(BASE[0],0,0,BASE[1],0,0);ctx.globalCompositeOperation='lighter';ctx.filter='blur(14px)';ctx.globalAlpha=.6;ctx.drawImage(gcv,0,0);ctx.filter='blur(4px)';ctx.globalAlpha=.3;ctx.drawImage(gcv,0,0);ctx.restore()}
+  if(g&&!LOWQ){ctx.save();ctx.setTransform(BASE[0],0,0,BASE[1],0,0);ctx.globalCompositeOperation='lighter';ctx.filter='blur(14px)';ctx.globalAlpha=.6;ctx.drawImage(gcv,0,0);ctx.filter='blur(4px)';ctx.globalAlpha=.3;ctx.drawImage(gcv,0,0);ctx.restore()}
   ctx.setTransform(BASE[0],0,0,BASE[1],0,0);
-  ctx.save();ctx.globalAlpha=.18;ctx.globalCompositeOperation='overlay';ctx.fillStyle=GRAIN;ctx.translate((clock*37)%50,(clock*23)%50);ctx.fillRect(-60,-60,W+120,H+120);ctx.restore();
+  if(!LOWQ){ctx.save();ctx.globalAlpha=.18;ctx.globalCompositeOperation='overlay';ctx.fillStyle=GRAIN;ctx.translate((clock*37)%50,(clock*23)%50);ctx.fillRect(-60,-60,W+120,H+120);ctx.restore()}
   // vignette
   const vg=ctx.createRadialGradient(W/2,H/2,H*.45,W/2,H/2,H);vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(0,0,0,.55)');ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);
 }
@@ -496,10 +504,11 @@ function drawDiv(clock){
   const X0=-210,X1=W+210,top=[],cb=[],lb=[];for(let x=X0;x<=X1;x+=4){top.push([x,sfD(x)]);cb.push([x,sfD(x)+14]);lb.push([x,lbD(x)])}
   ctx.save();polyPath([...cb,[X1,H+250],[X0,H+250]]);ctx.clip();ctx.drawImage(MANTLE,-210,200,W+420,H+100);ctx.restore();
   ctx.save();polyPath([...cb,[X1,H+250],[X0,H+250]]);ctx.clip();asthenosphere(clock);ctx.restore();
+  convCells([[XR-280,480,250,110,-1],[XR+280,480,250,110,1]],[XR-280,600]);
   fillPoly([...cb,...lb.slice().reverse()],'#6f4f35',.55);
   // crust strips: material stripes move outward symmetrically
   for(let x=X0;x<X1;x+=3){const a=Math.abs(x-XR)/VD;const t0=T-a;let c;
-    if(AGE)c=ageCol(a/1.7);else c=(Math.floor(t0*10)&1)?'#2c343d':'#3a4550';
+    if(AGE)c=ageCol(a/1.7);else c='#343e48';
     const y0=sfD(x),y1=sfD(x+3);ctx.fillStyle=c;ctx.beginPath();ctx.moveTo(x,y0);ctx.lineTo(x+3.3,y1);ctx.lineTo(x+3.3,y1+14);ctx.lineTo(x,y0+14);ctx.closePath();ctx.fill()}
   ctx.save();polyPath([...top,...cb.slice().reverse()]);ctx.clip();ctx.globalAlpha=.4;ctx.globalCompositeOperation='overlay';ctx.fillStyle=GRAIN;ctx.fillRect(0,0,W,H);ctx.restore();
   // material ticks in mantle lithosphere (move with the plates)
@@ -576,7 +585,7 @@ function drawTr(clock){
 function trFocus(){const f=P3(0,-WB,-75);const g=ctx.createRadialGradient(f[0],f[1],0,f[0],f[1],22);g.addColorStop(0,'rgba(255,240,180,1)');g.addColorStop(1,'rgba(255,150,40,0)');ctx.fillStyle=g;ctx.beginPath();ctx.arc(...f,22,0,7);ctx.fill();
   ctx.strokeStyle='rgba(255,230,160,.8)';ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(...f);ctx.lineTo(...P3(0,-WB,0));ctx.stroke();ctx.setLineDash([])}
 function glowTr(clock){if(T>=TS){trFocus();return true}return false}
-function camTr(){const dt=T-TS;let jx=0,jy=0;if(dt>=0&&dt<.05){const k=(1-dt/.05)*7;jx=k*Math.sin(dt*900);jy=k*Math.cos(dt*1300)}return[1+.04*sm((T-TS)/.1),600,300,jx,jy]}
+function camTr(){const dt=T-TS;let jx=0,jy=0;if(dt>=0&&dt<.05){const k=(1-dt/.05)*7;jx=k*Math.sin(dt*900);jy=k*Math.cos(dt*1300)}return[1,600,300,jx,jy]}
 
 /* ================= TSUNAMI ================= */
 const TQ=.1,XQ=640,FOC=[655,383];
@@ -586,14 +595,14 @@ function upl(x){return 14*sm((T-TQ)/.015)*Math.exp(-(((x-XQ)/70)**2))}
 function ground(x){return sbT(x)-(x<780?upl(x):0)}
 const ifc=x=>336+(x-560)*.5;
 const g2=z=>Math.exp(-z*z);
-function xr(){if(T<TQ)return XQ;if(T<.45)return lerp(XQ,790,sm((T-TQ)/(.45-TQ)));if(T<.62)return lerp(790,820,(T-.45)/.17);if(T<.74)return lerp(820,COAST,Math.pow((T-.62)/.12,1.2));return COAST}
+function xr(){if(T<TQ)return XQ;if(T<.45)return lerp(XQ,700,sm((T-TQ)/(.45-TQ)));if(T<.62)return lerp(700,735,(T-.45)/.17);if(T<.74)return lerp(735,COAST,Math.pow((T-.62)/.12,1.15));return COAST}
 const TC=.74;
 function eta(x){if(T<TQ)return 0;const ramp=sm((T-TQ)/.03);let e=0;
-  const xs=xr();const d=Math.max(3,sbT(Math.min(xs,COAST-1))-SEA);const Lw=clamp(150*Math.sqrt(d/160),80,150);
-  const A=Math.min(38,7*Math.pow(160/d,.25)*(1+2.2*sm((xs-760)/150)));
+  const xs=xr();const d=Math.max(3,sbT(Math.min(xs,COAST-1))-SEA);const Lw=clamp(150*Math.sqrt(d/160),95,150);
+  const A=Math.min(34,7*Math.pow(160/d,.25)*(1+2.2*sm((xs-760)/150)));
   const fade=1-sm((T-TC-.02)/.05);
-  e+=ramp*fade*A*g2((x-xs)/(.6*Lw));
-  const D=40*sm((T-.43)/.1)*(1-sm((T-.66)/.06));e-=D*g2((x-905)/120);
+  e+=ramp*fade*A*(x<xs?g2((x-xs)/(1.05*Lw)):g2((x-xs)/(.32*Lw)));
+  const D=62*sm((T-.43)/.08)*(1-sm((T-.66)/.06));e-=D*g2((x-915)/130);
   const xl=XQ-(T-TQ)*520;e+=ramp*7*(g2((x-xl)/57)-.6*g2((x-xl-160)/75));
   e+=12*g2((x-XQ)/70)*sm((T-TQ)/.01)*(1-sm((T-TQ-.01)/.04));
   return e}
@@ -632,10 +641,10 @@ function drawTs(clock){
   HOUSES.forEach(h=>drawHouse(h,clock));
   // quake
   if(T>=TQ){const dt=T-TQ;if(dt<.05){const p=dt/.05;for(let k=0;k<3;k++){ctx.strokeStyle=`rgba(255,235,170,${1-p})`;ctx.lineWidth=2;ctx.beginPath();ctx.arc(...FOC,6+p*70+k*14,0,7);ctx.stroke()}}tsFocus();
-    if(dt<.12){const a=1-dt/.12;ctx.fillStyle=`rgba(255,255,255,${a})`;[600,640,680].forEach(x=>{const y=ground(x)+22;ctx.beginPath();ctx.moveTo(x,y-14);ctx.lineTo(x+6,y-4);ctx.lineTo(x-6,y-4);ctx.closePath();ctx.fill()})}}
-  if(labels){pill('ים עמוק',260,232);if(T>=TQ)pill('מוקד',FOC[0]+90,FOC[1]+30,FOC[0]+6,FOC[1]+4);
+    }
+  if(labels){pill('ים עמוק',520,250);if(T>=TQ)pill('מוקד',FOC[0]+90,FOC[1]+30,FOC[0]+6,FOC[1]+4);
     if(T>=TQ&&T<TQ+.18)pill('תזוזת הקרקעית',520,370,600,ground(600)+6);
-    pill('מים רדודים',800,140,820,192);pill('החוף',COAST+60,112,COAST+6,ground(COAST+6)-4);pill('אסתנוספרה',1040,575)}
+    pill('מים רדודים',800,140,820,192);pill('החוף',COAST+60,112,COAST+6,ground(COAST+6)-4);pill('אסתנוספרה',380,455)}
 }
 function tsFocus(){const g=ctx.createRadialGradient(...FOC,0,...FOC,18);g.addColorStop(0,'rgba(255,240,180,1)');g.addColorStop(1,'rgba(255,150,40,0)');ctx.fillStyle=g;ctx.beginPath();ctx.arc(...FOC,18,0,7);ctx.fill()}
 function glowTs(clock){if(T>=TQ){tsFocus();return true}return false}
@@ -682,7 +691,7 @@ function buildSim(){
   $('legend').innerHTML=S.legend;$('modes').classList.toggle('hidden',!S.modes);$('age').classList.toggle('hidden',!S.age);$('agebar').style.display=S.age&&AGE?'block':'none';
   $('steps').style.setProperty('--n',S.steps.length);$('steps').innerHTML=S.steps.map((s,i)=>`<button data-i="${i}">${i+1} · ${s[1]}</button>`).join('');
   document.querySelectorAll('#steps button').forEach(b=>b.onclick=()=>{T=Math.min(1,S.steps[+b.dataset.i][0]+.005);playing=false;syncUI()});
-  $('marks').innerHTML=S.steps.map(s=>`<span style="right:${s[0]*100}%">${s[1]}</span>`).join('');
+  $('marks').innerHTML=S.steps.map((s,i)=>`<span title="${s[1]}" style="right:${s[0]*100}%">${i+1}</span>`).join('');
   document.title=`${S.title} | המנוע שמתחת לרגלינו`;syncUI();
 }
 function go(id){if(!SIMS[id])id='divergence';SIM=id;T=0;playing=false;buildSim();try{if(location.hash!=='#'+id)history.replaceState(null,'','#'+id)}catch(e){}}
@@ -698,7 +707,8 @@ document.querySelectorAll('#modes button').forEach(b=>b.onclick=()=>{document.qu
 
 function fit(){const r=cv.getBoundingClientRect(),d=window.devicePixelRatio||1;cv.width=Math.round(r.width*d);cv.height=Math.round(r.width*H/W*d);BASE=[cv.width/W,cv.height/H]}
 window.addEventListener('resize',fit);
-function loop(now){const dt=(now-last)/1000;last=now;if(playing){T=Math.min(1,T+dt*speed/SIMS[SIM].dur);if(T>=1)playing=false;syncUI()}render(now/1000);requestAnimationFrame(loop)}
+let FT=[],LOWQ=false;
+function loop(now){const dt=(now-last)/1000;last=now;if(!LOWQ&&FT.length<90){FT.push(dt);if(FT.length===90){FT.sort((a,b)=>a-b);if(FT[45]>.028)LOWQ=true}}if(playing){T=Math.min(1,T+dt*speed/SIMS[SIM].dur);if(T>=1)playing=false;syncUI()}render(now/1000);requestAnimationFrame(loop)}
 fit();go(location.hash.slice(1)||'divergence');requestAnimationFrame(loop);
 window.__setT=(sim,m,t,age)=>{if(sim&&sim!==SIM)go(sim);if(m){mode=m;document.querySelectorAll('#modes button').forEach(x=>x.classList.toggle('on',x.dataset.m===m))}AGE=!!age;T=t;syncUI()};
 })();
